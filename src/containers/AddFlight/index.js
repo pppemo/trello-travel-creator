@@ -1,6 +1,7 @@
 import React, { Component, Fragment } from 'react'
 import Trello from './../../api/trello'
 import NewFlightSegmentForm from './../../components/NewFlightSegmentForm'
+import FlightStatusNotifications from './../../notifications/flightStatusNotifications'
 import { Form, Select, NestedField } from 'react-form'
 
 const PREFERRED_BOARD_NAME = 'Aviation'
@@ -36,20 +37,14 @@ class AddFlight extends Component {
   fetchCards = listId => Trello.client().getCardsOnList(listId)
 
   saveFlightSegments = form => {
-    const { idBoard: parentBoardId, id: idCardSource } = this.state.newFlightCard
+    const { newFlightCard } = this.state
     const { flightSegments } = form
-    const options = {
-      idCardSource,
-      pos: 'bottom'
-    }
 
-    this.fetchLists(parentBoardId).then(response => {
+    this.fetchLists(newFlightCard.idBoard).then(response => {
       const upcomingFlightsList = response.find(list => list.name === UPCOMING_FLIGHTS_LIST_NAME)
       if (upcomingFlightsList) {
         flightSegments.forEach(flightSegment => {
-          const { from, to, resNumber } = flightSegment
-          const cardName = `${from} ${to}`
-          this.createNewFlightSegmentCard(cardName, resNumber, options, upcomingFlightsList.id)
+          this.createNewFlightSegmentCard(flightSegment, newFlightCard, upcomingFlightsList.id)
         })
       } else {
         throw new Error(`There's no list named "${UPCOMING_FLIGHTS_LIST_NAME}"`)
@@ -59,8 +54,39 @@ class AddFlight extends Component {
     })
   }
 
-  createNewFlightSegmentCard = (cardName, resNumber, options, upcomingFlightsListId) => {
-        return Trello.client().addCardWithExtraParams(cardName, options, upcomingFlightsListId)
+  createNewFlightSegmentCard = (flightSegment, newFlightCard, upcomingFlightsListId) => {
+    const { date, airlineIcao, flightNumber, from, to, res } = flightSegment
+    const desc = newFlightCard.desc.replace('{reservation_number}', res)
+    const cardName = `${date} ${airlineIcao} ${flightNumber} ${from}->${to}`
+    const options = {
+      idCardSource: newFlightCard.id,
+      pos: 'bottom',
+      desc
+    }
+
+    Trello.client().addCardWithExtraParams(cardName, options, upcomingFlightsListId)
+      .then(card => this.addFlightStatusNotifications(card.id, from, to, flightNumber))
+  }
+
+  addFlightStatusNotifications = (flightCardId, fromIata, toIata, flightNumber) => {
+    const airports = require('airport-data')
+    const airportFrom = airports.find(airport => airport.iata === fromIata)
+    const airportTo = airports.find(airport => airport.iata === toIata)
+
+    const airportFromName = airportFrom ? airportFrom.city : ''
+    const airportToName = airportTo ? airportTo.city : ''
+
+    const arrivalNotification = FlightStatusNotifications
+      .buildArrivalNotification(airportToName, toIata)
+    Trello.client().addCommentToCard(flightCardId, arrivalNotification)
+
+    const delayedFlightNotification = FlightStatusNotifications
+      .buildDelayedFlightNotification(airportToName, toIata)
+    Trello.client().addCommentToCard(flightCardId, delayedFlightNotification)
+
+    const flightPendingNotification = FlightStatusNotifications
+      .buildFlightPendingNotification(airportFromName, fromIata, airportToName, toIata, flightNumber)
+    Trello.client().addCommentToCard(flightCardId, flightPendingNotification)
   }
 
   getDefaultBoardId = () => {
@@ -91,7 +117,7 @@ class AddFlight extends Component {
     }).finally(() => this.setState({ isLoadingCards: false }))
   }
 
-  addFlightRow = formApi => formApi.setValue('flightSegments', formApi.values.flightSegment.concat({}))
+  addFlightRow = formApi => formApi.setValue('flightSegments', formApi.values.flightSegments.concat({}))
 
   render() {
     const { isLoadingBoards, isLoadingCards, newFlightCard } = this.state
@@ -99,7 +125,7 @@ class AddFlight extends Component {
     return (
       <div>
         <h1>Adding flight</h1>
-        {isLoadingBoards ? <span>Loading...</span> : <Form defaultValues={{ board: this.getDefaultBoardId(), flightSegment: [{}] }}
+        {isLoadingBoards ? <span>Loading...</span> : <Form defaultValues={{ board: this.getDefaultBoardId(), flightSegments: [{}] }}
           onSubmit={this.saveFlightSegments} >
           {formApi => (
             <form id="boardsForm" >
@@ -111,7 +137,7 @@ class AddFlight extends Component {
 
               {isLoadingCards ? <div>Loading cards...</div> : (
                 newFlightCard && <Fragment>
-                  {formApi.values.flightSegment.map((_element, i) =>
+                  {formApi.values.flightSegments.map((_element, i) =>
                     <NestedField key={`flightSegments${i}`} field={['flightSegments', i]} component={NewFlightSegmentForm} />)}
                   <button onClick={() => this.addFlightRow(formApi)} >Add flight segment</button>
                   <button onClick={formApi.submitForm} >Save</button>
