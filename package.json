@@ -8,6 +8,8 @@
     "react-bootstrap": "^0.32.4",
     "react-dom": "^16.6.3",
     "react-form": "3.5.6",
+    "react-router": "^4.3.1",
+    "react-router-dom": "^4.3.1",
     "react-scripts": "2.1.1",
     "trello": "^0.9.1"
   },
