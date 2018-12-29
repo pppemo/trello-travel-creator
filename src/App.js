@@ -1,9 +1,11 @@
 import React, { Component } from 'react'
 import Trello from './api/trello'
 import AddFlight from './containers/AddFlight'
+import AddTrip from './containers/AddTrip'
 import { PageHeader, Nav, NavItem } from 'react-bootstrap'
 import { Switch, Route } from 'react-router'
 import { withRouter } from 'react-router-dom'
+import 'react-dates/initialize'
 import './App.css'
 
 class App extends Component {
@@ -40,6 +42,7 @@ class App extends Component {
         </Nav>
         <Switch>
           <Route path="/addflight" component={AddFlight} />
+          <Route path="/createtrip" component={AddTrip} />
         </Switch>
       </div>
     );

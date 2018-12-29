@@ -1,8 +1,9 @@
-import React, { Component, Fragment } from 'react'
+import React, { Component } from 'react'
 import Trello from './../../api/trello'
 import NewFlightSegmentForm from './../../components/NewFlightSegmentForm'
 import FlightStatusNotifications from './../../notifications/flightStatusNotifications'
 import { Form, Select, NestedField } from 'react-form'
+import './AddFlight.css'
 
 const PREFERRED_BOARD_NAME = 'Aviation'
 const CHECKLISTS_LIST_NAME = 'CHECKLISTS'
@@ -136,12 +137,12 @@ class AddFlight extends Component {
                 options={this.getActiveBoards().map(board => ({ label: board.name, value: board.id }))} />
 
               {isLoadingCards ? <div>Loading cards...</div> : (
-                newFlightCard && <Fragment>
+                newFlightCard && <div className="addFlightRows">
                   {formApi.values.flightSegments.map((_element, i) =>
                     <NestedField key={`flightSegments${i}`} field={['flightSegments', i]} component={NewFlightSegmentForm} />)}
-                  <button onClick={() => this.addFlightRow(formApi)} >Add flight segment</button>
-                  <button onClick={formApi.submitForm} >Save</button>
-                </Fragment>
+                  <button type="button" onClick={() => this.addFlightRow(formApi)} >Add flight segment</button>
+                  <button type="button" onClick={formApi.submitForm} >Save</button>
+                </div>
               )
               }
             </form>
