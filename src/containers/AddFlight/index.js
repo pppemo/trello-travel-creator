@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React, { Component, Fragment } from 'react'
 import Trello from './../../api/trello'
 import NewFlightSegmentForm from './../../components/NewFlightSegmentForm'
 import FlightStatusNotifications from './../../notifications/flightStatusNotifications'
@@ -56,9 +56,9 @@ class AddFlight extends Component {
   }
 
   createNewFlightSegmentCard = (flightSegment, newFlightCard, upcomingFlightsListId) => {
-    const { date, airlineIcao, flightNumber, from, to, res } = flightSegment
+    const { takeOffDate, airlineIcao, flightNumber, from, to, res } = flightSegment
     const desc = newFlightCard.desc.replace('{reservation_number}', res)
-    const cardName = `${date} ${airlineIcao} ${flightNumber} ${from}->${to}`
+    const cardName = `${takeOffDate} ${airlineIcao} ${flightNumber} ${from}->${to}`
     const options = {
       idCardSource: newFlightCard.id,
       pos: 'bottom',
@@ -132,17 +132,19 @@ class AddFlight extends Component {
             <form id="boardsForm" >
               <label htmlFor="board">Board:</label>
               <Select field="board"
+                className="form-control"
                 id="select-input-board"
                 onChange={this.onBoardChange}
                 options={this.getActiveBoards().map(board => ({ label: board.name, value: board.id }))} />
 
               {isLoadingCards ? <div>Loading cards...</div> : (
-                newFlightCard && <div className="addFlightRows">
+                newFlightCard && <Fragment><div className="addFlightRows">
                   {formApi.values.flightSegments.map((_element, i) =>
                     <NestedField key={`flightSegments${i}`} field={['flightSegments', i]} component={NewFlightSegmentForm} />)}
+                </div>
                   <button type="button" onClick={() => this.addFlightRow(formApi)} >Add flight segment</button>
                   <button type="button" onClick={formApi.submitForm} >Save</button>
-                </div>
+                </Fragment>
               )
               }
             </form>
