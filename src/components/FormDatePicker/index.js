@@ -2,6 +2,7 @@ import React, { Component } from 'react'
 import { Field } from 'react-form'
 import { SingleDatePicker } from 'react-dates'
 import 'react-dates/lib/css/_datepicker.css'
+import './FormDatePicker.css'
 
 export default class FormDatePicker extends Component {
   constructor(props) {

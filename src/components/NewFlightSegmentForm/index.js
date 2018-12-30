@@ -2,6 +2,7 @@ import React, { Component } from 'react'
 import { Text } from 'react-form'
 import { Row, Col } from 'react-bootstrap'
 import FormDatePicker from './../FormDatePicker'
+import './NewFlightSegmentForm.css'
 
 export default class NewFlightSegmentForm extends Component {
   render() {
@@ -9,7 +10,7 @@ export default class NewFlightSegmentForm extends Component {
     const index = field[1]
 
     return (
-      <Row>
+      <Row className="NewFlightSegmentForm-Row">
         <Col xs={2}><FormDatePicker
           field="takeOffDate"
           index={index}

@@ -3,6 +3,7 @@ import Trello from './../../api/trello'
 import NewFlightSegmentForm from './../../components/NewFlightSegmentForm'
 import FlightStatusNotifications from './../../notifications/flightStatusNotifications'
 import { Form, Select, NestedField } from 'react-form'
+import { Button, Row, Col } from 'react-bootstrap'
 import './AddFlight.css'
 
 const PREFERRED_BOARD_NAME = 'Aviation'
@@ -124,26 +125,30 @@ class AddFlight extends Component {
     const { isLoadingBoards, isLoadingCards, newFlightCard } = this.state
 
     return (
-      <div>
-        <h1>Adding flight</h1>
+      <div >
         {isLoadingBoards ? <span>Loading...</span> : <Form defaultValues={{ board: this.getDefaultBoardId(), flightSegments: [{}] }}
           onSubmit={this.saveFlightSegments} >
           {formApi => (
-            <form id="boardsForm" >
-              <label htmlFor="board">Board:</label>
-              <Select field="board"
-                className="form-control"
-                id="select-input-board"
-                onChange={this.onBoardChange}
-                options={this.getActiveBoards().map(board => ({ label: board.name, value: board.id }))} />
+            <form id="boardsForm">
+              <Row>
+                <Col xs={3}>
+                  <Select field="board"
+                    className="form-control"
+                    id="select-input-board"
+                    onChange={this.onBoardChange}
+                    options={this.getActiveBoards().map(board => ({ label: board.name, value: board.id }))} />
+                </Col>
+                <Col xs={1}>
+                  <Button bsStyle="success" onClick={() => this.addFlightRow(formApi)}>+ Flight segment</Button>
+                </Col>
+              </Row>
 
               {isLoadingCards ? <div>Loading cards...</div> : (
                 newFlightCard && <Fragment><div className="addFlightRows">
                   {formApi.values.flightSegments.map((_element, i) =>
                     <NestedField key={`flightSegments${i}`} field={['flightSegments', i]} component={NewFlightSegmentForm} />)}
                 </div>
-                  <button type="button" onClick={() => this.addFlightRow(formApi)} >Add flight segment</button>
-                  <button type="button" onClick={formApi.submitForm} >Save</button>
+                  <Button bsStyle="primary" onClick={formApi.submitForm}>Save</Button>
                 </Fragment>
               )
               }
