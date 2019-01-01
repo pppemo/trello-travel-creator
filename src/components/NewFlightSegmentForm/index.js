@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { Text } from 'react-form'
+import { Text, Checkbox } from 'react-form'
 import { Row, Col, Button } from 'react-bootstrap'
 import FormDatePicker from './../FormDatePicker'
 import FormMaskedInput from './../FormMaskedInput'
@@ -40,6 +40,9 @@ export default class NewFlightSegmentForm extends Component {
         <Col xs={2}>
           <Text className="form-control" field="from" placeholder="ABC" />
           <Text className="form-control" field="to" placeholder="XYZ" />
+        </Col>
+        <Col xs={1}>
+          <Checkbox field="destinationOutsideEU" className="form-control"/>
         </Col>
         <Col xs={1}>
           <FormMaskedInput

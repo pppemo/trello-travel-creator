@@ -89,7 +89,7 @@ class AddFlight extends Component {
     const isMultipleSegments = flightSegments.length > 1
     const isFirstSegment = flightSegmentNumber === 0
     const hasFollowingSegment = flightSegments.length - 1 !== flightSegmentNumber
-    const { flightNumber, airlineName, from, to, fromName, toName, departure, arrival } = flightSegment
+    const { flightNumber, airlineName, from, to, fromName, toName, departure, arrival, destinationOutsideEU } = flightSegment
 
     const arrivalNotification = FlightStatusNotifications
       .buildArrivalNotification(toName, to, hasFollowingSegment, flightSegments[flightSegmentNumber + 1])
@@ -102,7 +102,7 @@ class AddFlight extends Component {
     BitlyGateway.shortenUrl(`https://www.flightradar24.com/${flightNumber}`).then(response => {
       const { link } = response.data
       let flightPendingNotification = FlightStatusNotifications
-        .buildFlightPendingNotification(fromName, from, toName, to, flightNumber, airlineName, departure, arrival, link)
+        .buildFlightPendingNotification(fromName, from, toName, to, flightNumber, airlineName, departure, arrival, link, destinationOutsideEU)
       if (isMultipleSegments && isFirstSegment) {
         const flightPlanNotification = FlightStatusNotifications.buildFlightPlanNotification(flightSegments)
         flightPendingNotification = `${flightPlanNotification} ${flightPendingNotification}`
@@ -159,7 +159,7 @@ class AddFlight extends Component {
                     options={this.getActiveBoards().map(board => ({ label: board.name, value: board.id }))} />
                 </Col>
                 <Col xs={1}>
-                  <Button bsStyle="success" onClick={() => this.addFlightRow(formApi)}>+ Flight segment</Button>
+                  <Button bsStyle="success" onClick={() => this.addFlightRow(formApi)}>+ Leg</Button>
                 </Col>
               </Row>
 
@@ -168,6 +168,7 @@ class AddFlight extends Component {
                   <Col xs={2}>Departure date</Col>
                   <Col xs={1}>From</Col>
                   <Col xs={1}>To</Col>
+                  <Col xs={1}>Destination outside EU</Col>
                   <Col xs={1}>Departure</Col>
                   <Col xs={1}>Arrival</Col>
                   <Col xs={2}>Flight no.</Col>
