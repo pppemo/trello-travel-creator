@@ -38,15 +38,29 @@ class AddFlight extends Component {
 
   fetchCards = listId => Trello.client().getCardsOnList(listId)
 
+  fillAirportNames = flightSegments => flightSegments.map(flightSegment => {
+    const airports = require('airport-data')
+    const airportFrom = airports.find(airport => airport.iata === flightSegment.from)
+    const airportTo = airports.find(airport => airport.iata === flightSegment.to)
+    const fromName = airportFrom ? airportFrom.city : ''
+    const toName = airportTo ? airportTo.city : ''
+
+    return {
+      ...flightSegment,
+      fromName,
+      toName
+    }
+  })
+
   saveFlightSegments = form => {
     const { newFlightCard } = this.state
-    const { flightSegments } = form
+    const flightSegments = this.fillAirportNames(form.flightSegments)
 
     this.fetchLists(newFlightCard.idBoard).then(response => {
       const upcomingFlightsList = response.find(list => list.name === UPCOMING_FLIGHTS_LIST_NAME)
       if (upcomingFlightsList) {
-        flightSegments.forEach(flightSegment => {
-          this.createNewFlightSegmentCard(flightSegment, newFlightCard, upcomingFlightsList.id)
+        flightSegments.forEach((flightSegment, flightSegmentNumber) => {
+          this.createNewFlightSegmentCard(flightSegment, flightSegmentNumber, newFlightCard, upcomingFlightsList.id, flightSegments)
         })
       } else {
         throw new Error(`There's no list named "${UPCOMING_FLIGHTS_LIST_NAME}"`)
@@ -56,10 +70,10 @@ class AddFlight extends Component {
     })
   }
 
-  createNewFlightSegmentCard = (flightSegment, newFlightCard, upcomingFlightsListId) => {
-    const { takeOffDate, airlineIcao, flightNumber, from, to, res } = flightSegment
+  createNewFlightSegmentCard = (flightSegment, flightSegmentNumber, newFlightCard, upcomingFlightsListId, flightSegments) => {
+    const { takeOffDate, flightNumber, airlineName, from, to, res } = flightSegment
     const desc = newFlightCard.desc.replace('{reservation_number}', res)
-    const cardName = `${takeOffDate} ${airlineIcao} ${flightNumber} ${from}->${to}`
+    const cardName = `${takeOffDate} ${flightNumber} ${from}->${to} ${airlineName}`
     const options = {
       idCardSource: newFlightCard.id,
       pos: 'bottom',
@@ -67,27 +81,29 @@ class AddFlight extends Component {
     }
 
     Trello.client().addCardWithExtraParams(cardName, options, upcomingFlightsListId)
-      .then(card => this.addFlightStatusNotifications(card.id, from, to, flightNumber))
+      .then(card => this.addFlightStatusNotifications(card.id, flightSegment, flightSegmentNumber, flightSegments))
   }
 
-  addFlightStatusNotifications = (flightCardId, fromIata, toIata, flightNumber) => {
-    const airports = require('airport-data')
-    const airportFrom = airports.find(airport => airport.iata === fromIata)
-    const airportTo = airports.find(airport => airport.iata === toIata)
-
-    const airportFromName = airportFrom ? airportFrom.city : ''
-    const airportToName = airportTo ? airportTo.city : ''
+  addFlightStatusNotifications = (flightCardId, flightSegment, flightSegmentNumber, flightSegments) => {
+    const isMultipleSegments = flightSegments.length > 1
+    const isFirstSegment = flightSegmentNumber === 0
+    const hasFollowingSegment = flightSegments.length - 1 !== flightSegmentNumber
+    const { flightNumber, airlineName, from, to, fromName, toName, departure, arrival } = flightSegment
 
     const arrivalNotification = FlightStatusNotifications
-      .buildArrivalNotification(airportToName, toIata)
+      .buildArrivalNotification(toName, to, hasFollowingSegment, flightSegments[flightSegmentNumber + 1])
     Trello.client().addCommentToCard(flightCardId, arrivalNotification)
 
     const delayedFlightNotification = FlightStatusNotifications
-      .buildDelayedFlightNotification(airportToName, toIata)
+      .buildDelayedFlightNotification(toName, to)
     Trello.client().addCommentToCard(flightCardId, delayedFlightNotification)
 
-    const flightPendingNotification = FlightStatusNotifications
-      .buildFlightPendingNotification(airportFromName, fromIata, airportToName, toIata, flightNumber)
+    let flightPendingNotification = FlightStatusNotifications
+      .buildFlightPendingNotification(fromName, from, toName, to, flightNumber, airlineName, departure, arrival)
+    if (isMultipleSegments && isFirstSegment) {
+      const flightPlanNotification = FlightStatusNotifications.buildFlightPlanNotification(flightSegments)
+      flightPendingNotification = `${flightPlanNotification} ${flightPendingNotification}`
+    }
     Trello.client().addCommentToCard(flightCardId, flightPendingNotification)
   }
 
@@ -143,15 +159,27 @@ class AddFlight extends Component {
                 </Col>
               </Row>
 
-              {isLoadingCards ? <div>Loading cards...</div> : (
-                newFlightCard && <Fragment><div className="addFlightRows">
-                  {formApi.values.flightSegments.map((_element, i) =>
-                    <NestedField key={`flightSegments${i}`} field={['flightSegments', i]} component={NewFlightSegmentForm} />)}
-                </div>
-                  <Button bsStyle="primary" onClick={formApi.submitForm}>Save</Button>
-                </Fragment>
-              )
-              }
+              <div className="addFlightRows">
+                <Row>
+                  <Col xs={2}>Departure date</Col>
+                  <Col xs={1}>From</Col>
+                  <Col xs={1}>To</Col>
+                  <Col xs={1}>Departure</Col>
+                  <Col xs={1}>Arrival</Col>
+                  <Col xs={2}>Flight no.</Col>
+                  <Col xs={2}>Reservation</Col>
+                </Row>
+              </div>
+
+              {isLoadingCards ? <div>Loading cards...</div> : (<Fragment>
+                {newFlightCard && formApi.values.flightSegments.map((_element, i) =>
+                  <NestedField key={`flightSegments${i}`}
+                    field={['flightSegments', i]}
+                    formApi={formApi}
+                    component={NewFlightSegmentForm} />)}
+                <Button bsStyle="primary" onClick={formApi.submitForm}>Save</Button>
+              </Fragment>
+              )}
             </form>
           )}
         </Form>}
