@@ -5,6 +5,7 @@ import FlightStatusNotifications from './../../notifications/flightStatusNotific
 import { Form, Select, NestedField } from 'react-form'
 import { Button, Row, Col } from 'react-bootstrap'
 import './AddFlight.css'
+import BitlyGateway from './../../api/bitly'
 
 const PREFERRED_BOARD_NAME = 'Aviation'
 const CHECKLISTS_LIST_NAME = 'CHECKLISTS'
@@ -98,13 +99,16 @@ class AddFlight extends Component {
       .buildDelayedFlightNotification(toName, to)
     Trello.client().addCommentToCard(flightCardId, delayedFlightNotification)
 
-    let flightPendingNotification = FlightStatusNotifications
-      .buildFlightPendingNotification(fromName, from, toName, to, flightNumber, airlineName, departure, arrival)
-    if (isMultipleSegments && isFirstSegment) {
-      const flightPlanNotification = FlightStatusNotifications.buildFlightPlanNotification(flightSegments)
-      flightPendingNotification = `${flightPlanNotification} ${flightPendingNotification}`
-    }
-    Trello.client().addCommentToCard(flightCardId, flightPendingNotification)
+    BitlyGateway.shortenUrl(`https://www.flightradar24.com/${flightNumber}`).then(response => {
+      const { link } = response.data
+      let flightPendingNotification = FlightStatusNotifications
+        .buildFlightPendingNotification(fromName, from, toName, to, flightNumber, airlineName, departure, arrival, link)
+      if (isMultipleSegments && isFirstSegment) {
+        const flightPlanNotification = FlightStatusNotifications.buildFlightPlanNotification(flightSegments)
+        flightPendingNotification = `${flightPlanNotification} ${flightPendingNotification}`
+      }
+      Trello.client().addCommentToCard(flightCardId, flightPendingNotification)
+    })
   }
 
   getDefaultBoardId = () => {

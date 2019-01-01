@@ -9,10 +9,10 @@ export default {
     const viaAirports = airports.join(', ')
     return `Dzisiaj będę leciał do *${lastAirport}* przez ${viaAirports}.\n\n`
   },
-  buildFlightPendingNotification: (fromName, fromIata, toName, toIata, flightNumber, airlineName, departure, arrival) =>
+  buildFlightPendingNotification: (fromName, fromIata, toName, toIata, flightNumber, airlineName, departure, arrival, flightRadarShortenedURL) =>
     `Jestem na lotnisku, gotowy do mojego lotu z ${fromName} (${fromIata}) do *${toName} (${toIata})* lotem numer ${flightNumber} linii ${airlineName}.\n\n` +
     `Planowy wylot z ${fromName} o ${departure}, a przylot do ${toName} o ${arrival}.\n\n` +
-    `Dam znać zaraz po wylądowaniu. Lot można śledzić na Flight Radarze pod adresem: https://www.flightradar24.com/${flightNumber} (link działa po wystartowaniu samolotu)`,
+    `Dam znać zaraz po wylądowaniu. Lot można śledzić na Flight Radarze pod adresem: ${flightRadarShortenedURL} (link działa po wystartowaniu samolotu)`,
 
   buildDelayedFlightNotification: (toName, toIata) =>
     `Niestety wygląda na to, że mój lot do ${toName} (${toIata}) jest opóźniony. Będę informował o dalszych etapach podróży.`,
