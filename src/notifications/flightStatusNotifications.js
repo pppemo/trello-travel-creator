@@ -2,12 +2,8 @@ export default {
   buildFlightPlanNotification: flightSegments => {
     const firstAirport = flightSegments[0].fromName
     const consequtiveAirports = flightSegments.map(airport => airport.toName)
-    const airports = [firstAirport].concat(consequtiveAirports)
-
-    airports.shift()
-    const lastAirport = airports.pop()
-    const viaAirports = airports.join(', ')
-    return `Dzisiaj będę leciał do *${lastAirport}* przez ${viaAirports}.\n\n`
+    const airports = [firstAirport].concat(consequtiveAirports).join('  ➡️ ')
+    return `Dzisiaj będę leciał tak: ${airports}.\n\n`
   },
   buildFlightPendingNotification: (fromName, fromIata, toName, toIata, flightNumber, airlineName,
     departure, arrival, flightRadarShortenedURL, destinationOutsideEU) =>

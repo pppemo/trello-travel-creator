@@ -4,6 +4,7 @@ import NewFlightSegmentForm from './../../components/NewFlightSegmentForm'
 import FlightStatusNotifications from './../../notifications/flightStatusNotifications'
 import { Form, Select, NestedField } from 'react-form'
 import { Button, Row, Col } from 'react-bootstrap'
+import FontAwesome from 'react-fontawesome'
 import './AddFlight.css'
 import BitlyGateway from './../../api/bitly'
 
@@ -39,7 +40,7 @@ class AddFlight extends Component {
 
   fetchCards = listId => Trello.client().getCardsOnList(listId)
 
-  fillAirportNames = flightSegments => flightSegments.map(flightSegment => {
+  fillAirportNamesAndCapitalizeInputs = flightSegments => flightSegments.map(flightSegment => {
     const airports = require('airport-data')
     const airportFrom = airports.find(airport => airport.iata === flightSegment.from)
     const airportTo = airports.find(airport => airport.iata === flightSegment.to)
@@ -49,13 +50,17 @@ class AddFlight extends Component {
     return {
       ...flightSegment,
       fromName,
-      toName
+      toName,
+      from: flightSegment.from.toUpperCase(),
+      to: flightSegment.to.toUpperCase(),
+      flightNumber: flightSegment.flightNumber.toUpperCase(),
+      res: flightSegment.res.toUpperCase()
     }
   })
 
   saveFlightSegments = form => {
     const { newFlightCard } = this.state
-    const flightSegments = this.fillAirportNames(form.flightSegments)
+    const flightSegments = this.fillAirportNamesAndCapitalizeInputs(form.flightSegments)
 
     this.fetchLists(newFlightCard.idBoard).then(response => {
       const upcomingFlightsList = response.find(list => list.name === UPCOMING_FLIGHTS_LIST_NAME)
@@ -159,7 +164,7 @@ class AddFlight extends Component {
                     options={this.getActiveBoards().map(board => ({ label: board.name, value: board.id }))} />
                 </Col>
                 <Col xs={1}>
-                  <Button bsStyle="success" onClick={() => this.addFlightRow(formApi)}>+ Leg</Button>
+                  <Button bsStyle="success" onClick={() => this.addFlightRow(formApi)}><FontAwesome name='plus' /> Leg</Button>
                 </Col>
               </Row>
 
@@ -171,8 +176,9 @@ class AddFlight extends Component {
                   <Col xs={1}>Destination outside EU</Col>
                   <Col xs={1}>Departure</Col>
                   <Col xs={1}>Arrival</Col>
-                  <Col xs={2}>Flight no.</Col>
-                  <Col xs={2}>Reservation</Col>
+                  <Col xs={1}>Flight no.</Col>
+                  <Col xs={1}>Airline</Col>
+                  <Col xs={1}>Reservation</Col>
                 </Row>
               </div>
 
