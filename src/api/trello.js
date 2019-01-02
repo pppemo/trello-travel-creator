@@ -13,7 +13,7 @@ export default {
         read: 'true',
         write: 'true' },
       expiration: '1day'
-    });
+    })
   },
   client: () => new Trello(APP_KEY, TRELLO_TOKEN)
 }

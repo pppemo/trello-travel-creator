@@ -8,3 +8,8 @@
   -webkit-box-shadow: none;
   box-shadow: none;
 }
+
+.AddFlight-savingSpinner {
+  margin: 6px 10px;
+  display: inline-flex
+}

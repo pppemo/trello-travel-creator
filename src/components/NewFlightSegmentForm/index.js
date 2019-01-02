@@ -44,8 +44,8 @@ export default class NewFlightSegmentForm extends Component {
           placeholder="DD/MM/YYY"
           hideKeyboardShortcutsPanel={true}
         /></Col>
-        <Col xs={1}><Text className="form-control" field="from" placeholder="ABC" maxLength={3} style={{'text-transform': 'uppercase'}} /></Col>
-        <Col xs={1}><Text className="form-control" field="to" placeholder="XYZ" maxLength={3} style={{'text-transform': 'uppercase'}} /></Col>
+        <Col xs={1}><Text className="form-control" field="from" placeholder="ABC" maxLength={3} style={{textTransform: 'uppercase'}} /></Col>
+        <Col xs={1}><Text className="form-control" field="to" placeholder="XYZ" maxLength={3} style={{textTransform: 'uppercase'}} /></Col>
         <Col xs={1}>
           <Checkbox field="destinationOutsideEU" className="form-control" />
         </Col>
@@ -70,13 +70,13 @@ export default class NewFlightSegmentForm extends Component {
           <Text className="form-control"
             field="flightNumber"
             placeholder="XY1234"
-            style={{'text-transform': 'uppercase'}}
+            style={{textTransform: 'uppercase'}}
             onBlur={this.fetchAirlineName}
           />
         </Col>
         <Col xs={1}><Text className="form-control" field="airlineName" placeholder="e.g. LOT" /></Col>
-        <Col xs={1}><Text className="form-control" field="res" placeholder="ABCDEF" style={{'text-transform': 'uppercase'}} /></Col>
-        <Col xs={1}>{index > 0 && <Button bsStyle="danger" onClick={this.removeRow}><FontAwesome name='trash' /></Button>}</Col>
+        <Col xs={1}><Text className="form-control" field="res" placeholder="ABCDEF" style={{textTransform: 'uppercase'}} /></Col>
+        <Col xs={1}>{index > 0 && <Button bsStyle="danger" onClick={this.removeRow}><FontAwesome name="trash" /></Button>}</Col>
       </Row>
     );
   }

@@ -3,12 +3,14 @@ import Trello from './../../api/trello'
 import NewFlightSegmentForm from './../../components/NewFlightSegmentForm'
 import FlightStatusNotifications from './../../notifications/flightStatusNotifications'
 import { Form, Select, NestedField } from 'react-form'
-import { Button, Row, Col } from 'react-bootstrap'
+import { Button, Row, Col, ButtonToolbar } from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
 import './AddFlight.css'
 import BitlyGateway from './../../api/bitly'
+import Spinner from './../../components/Spinner'
+import { PulseLoader } from 'react-spinners'
 
-const PREFERRED_BOARD_NAME = 'Aviation'
+const PREFERRED_BOARD_NAME = 'TEST Flight Log'
 const CHECKLISTS_LIST_NAME = 'CHECKLISTS'
 const UPCOMING_FLIGHTS_LIST_NAME = 'Upcoming flights'
 const NEW_FLIGHT_CARD_NAME = 'New flight'
@@ -19,6 +21,7 @@ class AddFlight extends Component {
     this.state = {
       isLoadingBoards: true,
       isLoadingCards: false,
+      isSaving: false,
       boards: [],
       newFlightCard: null
     }
@@ -32,6 +35,7 @@ class AddFlight extends Component {
           this.onBoardChange(defaultBoardId)
         }
       }))
+      .catch(error => console.log(error))
   }
 
   getActiveBoards = () => this.state.boards.filter(board => !board.closed)
@@ -46,34 +50,40 @@ class AddFlight extends Component {
     const airportTo = airports.find(airport => airport.iata === flightSegment.to)
     const fromName = airportFrom ? airportFrom.city : ''
     const toName = airportTo ? airportTo.city : ''
+    const { from, to, flightNumber, res } = flightSegment
 
     return {
       ...flightSegment,
       fromName,
       toName,
-      from: flightSegment.from.toUpperCase(),
-      to: flightSegment.to.toUpperCase(),
-      flightNumber: flightSegment.flightNumber.toUpperCase(),
-      res: flightSegment.res.toUpperCase()
+      from: from && from.toUpperCase(),
+      to: to && to.toUpperCase(),
+      flightNumber: flightNumber && flightNumber.toUpperCase(),
+      res: res && res.toUpperCase()
     }
   })
 
   saveFlightSegments = form => {
     const { newFlightCard } = this.state
     const flightSegments = this.fillAirportNamesAndCapitalizeInputs(form.flightSegments)
+    this.setState({ isSaving: true })
 
     this.fetchLists(newFlightCard.idBoard).then(response => {
       const upcomingFlightsList = response.find(list => list.name === UPCOMING_FLIGHTS_LIST_NAME)
       if (upcomingFlightsList) {
-        flightSegments.forEach((flightSegment, flightSegmentNumber) => {
-          this.createNewFlightSegmentCard(flightSegment, flightSegmentNumber, newFlightCard, upcomingFlightsList.id, flightSegments)
-        })
+        const promises = []
+        flightSegments.forEach((flightSegment, flightSegmentNumber) =>
+          promises.push(
+            this.createNewFlightSegmentCard(flightSegment, flightSegmentNumber, newFlightCard, upcomingFlightsList.id, flightSegments))
+        )
+        return Promise.all(promises)
       } else {
         throw new Error(`There's no list named "${UPCOMING_FLIGHTS_LIST_NAME}"`)
       }
-    }).catch(error => {
+    }).then(() => alert('Done!'))
+    .catch(error => {
       alert(error)
-    })
+    }).finally(() => this.setState({ isSaving: false }))
   }
 
   createNewFlightSegmentCard = (flightSegment, flightSegmentNumber, newFlightCard, upcomingFlightsListId, flightSegments) => {
@@ -86,7 +96,7 @@ class AddFlight extends Component {
       desc
     }
 
-    Trello.client().addCardWithExtraParams(cardName, options, upcomingFlightsListId)
+    return Trello.client().addCardWithExtraParams(cardName, options, upcomingFlightsListId)
       .then(card => this.addFlightStatusNotifications(card.id, flightSegment, flightSegmentNumber, flightSegments))
   }
 
@@ -98,21 +108,24 @@ class AddFlight extends Component {
 
     const arrivalNotification = FlightStatusNotifications
       .buildArrivalNotification(toName, to, hasFollowingSegment, flightSegments[flightSegmentNumber + 1])
-    Trello.client().addCommentToCard(flightCardId, arrivalNotification)
 
     const delayedFlightNotification = FlightStatusNotifications
       .buildDelayedFlightNotification(toName, to)
-    Trello.client().addCommentToCard(flightCardId, delayedFlightNotification)
 
-    BitlyGateway.shortenUrl(`https://www.flightradar24.com/${flightNumber}`).then(response => {
-      const { link } = response.data
-      let flightPendingNotification = FlightStatusNotifications
-        .buildFlightPendingNotification(fromName, from, toName, to, flightNumber, airlineName, departure, arrival, link, destinationOutsideEU)
-      if (isMultipleSegments && isFirstSegment) {
-        const flightPlanNotification = FlightStatusNotifications.buildFlightPlanNotification(flightSegments)
-        flightPendingNotification = `${flightPlanNotification} ${flightPendingNotification}`
-      }
-      Trello.client().addCommentToCard(flightCardId, flightPendingNotification)
+    return Promise.all([
+      Trello.client().addCommentToCard(flightCardId, arrivalNotification),
+      Trello.client().addCommentToCard(flightCardId, delayedFlightNotification)
+    ]).then(() => {
+      return BitlyGateway.shortenUrl(`https://www.flightradar24.com/${flightNumber}`).then(response => {
+        const { link } = response.data
+        let flightPendingNotification = FlightStatusNotifications
+          .buildFlightPendingNotification(fromName, from, toName, to, flightNumber, airlineName, departure, arrival, link, destinationOutsideEU)
+        if (isMultipleSegments && isFirstSegment) {
+          const flightPlanNotification = FlightStatusNotifications.buildFlightPlanNotification(flightSegments)
+          flightPendingNotification = `${flightPlanNotification} ${flightPendingNotification}`
+        }
+        return Trello.client().addCommentToCard(flightCardId, flightPendingNotification)
+      })
     })
   }
 
@@ -147,24 +160,30 @@ class AddFlight extends Component {
   addFlightRow = formApi => formApi.setValue('flightSegments', formApi.values.flightSegments.concat({}))
 
   render() {
-    const { isLoadingBoards, isLoadingCards, newFlightCard } = this.state
+    const { isLoadingBoards, isLoadingCards, newFlightCard, isSaving } = this.state
 
     return (
       <div >
-        {isLoadingBoards ? <span>Loading...</span> : <Form defaultValues={{ board: this.getDefaultBoardId(), flightSegments: [{}] }}
+        {isLoadingBoards ? <Spinner /> : <Form defaultValues={{ board: this.getDefaultBoardId(), flightSegments: [{}] }}
           onSubmit={this.saveFlightSegments} >
           {formApi => (
             <form id="boardsForm">
               <Row>
-                <Col xs={3}>
+                <Col xs={4}>
                   <Select field="board"
                     className="form-control"
                     id="select-input-board"
                     onChange={this.onBoardChange}
                     options={this.getActiveBoards().map(board => ({ label: board.name, value: board.id }))} />
                 </Col>
-                <Col xs={1}>
-                  <Button bsStyle="success" onClick={() => this.addFlightRow(formApi)}><FontAwesome name='plus' /> Leg</Button>
+                <Col xs={8}>
+                  {newFlightCard &&<ButtonToolbar>
+                    <Button bsStyle="success" onClick={() => this.addFlightRow(formApi)}><FontAwesome name="plus" /> Leg</Button>
+                    <Button bsStyle="danger"
+                      onClick={() => formApi.setValue('flightSegments', [])}><FontAwesome name="trash" /> Clear</Button>
+                    <Button bsStyle="primary" onClick={formApi.submitForm} disabled={isSaving}>Save</Button>
+                    {isSaving && <PulseLoader color="#337ab7" className="AddFlight-savingSpinner"/>}
+                  </ButtonToolbar>}
                 </Col>
               </Row>
 
@@ -182,13 +201,12 @@ class AddFlight extends Component {
                 </Row>
               </div>
 
-              {isLoadingCards ? <div>Loading cards...</div> : (<Fragment>
+              {isLoadingCards ? <Spinner /> : (<Fragment>
                 {newFlightCard && formApi.values.flightSegments.map((_element, i) =>
                   <NestedField key={`flightSegments${i}`}
                     field={['flightSegments', i]}
                     formApi={formApi}
                     component={NewFlightSegmentForm} />)}
-                <Button bsStyle="primary" onClick={formApi.submitForm}>Save</Button>
               </Fragment>
               )}
             </form>

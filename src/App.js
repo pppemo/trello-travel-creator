@@ -5,6 +5,7 @@ import AddTrip from './containers/AddTrip'
 import { PageHeader, Nav, NavItem } from 'react-bootstrap'
 import { Switch, Route } from 'react-router'
 import { withRouter } from 'react-router-dom'
+import FontAwesome from 'react-fontawesome'
 import 'react-dates/initialize'
 import './App.css'
 
@@ -30,7 +31,8 @@ class App extends Component {
     return (
       <div className="App">
         <PageHeader>
-          Trello Travel Creator
+          <FontAwesome name="plane-departure" />
+          &nbsp;Trello Travel Creator
         </PageHeader>
         <Nav bsStyle="tabs" className="App-Nav" activeKey={this.state.navEventKey} onSelect={this.onNavSelect}>
           <NavItem eventKey="/addflight">
