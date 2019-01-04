@@ -35,11 +35,11 @@ class App extends Component {
           &nbsp;Trello Travel Creator
         </PageHeader>
         <Nav bsStyle="tabs" className="App-Nav" activeKey={this.state.navEventKey} onSelect={this.onNavSelect}>
-          <NavItem eventKey="/addflight">
-            Add flight segments
-          </NavItem>
           <NavItem eventKey="/createtrip">
             Create new trip
+          </NavItem>
+          <NavItem eventKey="/addflight">
+            Add flight segments
           </NavItem>
         </Nav>
         <Switch>

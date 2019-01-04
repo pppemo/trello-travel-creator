@@ -1,0 +1,15 @@
+.addFlightRows {
+  margin-top: 25px;
+  margin-bottom: 25px;
+}
+
+.form-control:focus{
+  border-color: #cccccc;
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
+
+.AddTrip-savingSpinner {
+  margin: 6px 10px;
+  display: inline-flex
+}

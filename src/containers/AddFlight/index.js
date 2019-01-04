@@ -10,7 +10,7 @@ import BitlyGateway from './../../api/bitly'
 import Spinner from './../../components/Spinner'
 import { PulseLoader } from 'react-spinners'
 
-const PREFERRED_BOARD_NAME = 'TEST Flight Log'
+const PREFERRED_BOARD_NAME = 'Flights log'
 const CHECKLISTS_LIST_NAME = 'CHECKLISTS'
 const UPCOMING_FLIGHTS_LIST_NAME = 'Upcoming flights'
 const NEW_FLIGHT_CARD_NAME = 'New flight'

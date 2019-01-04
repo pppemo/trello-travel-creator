@@ -1,13 +1,21 @@
-import React, { Component, Fragment } from 'react'
+import React, { Component } from 'react'
 import Trello from './../../api/trello'
-import NewFlightSegmentForm from './../../components/NewFlightSegmentForm'
-import FlightStatusNotifications from './../../notifications/flightStatusNotifications'
-import { Form, Select, NestedField } from 'react-form'
+import NewTripChecklistItem from './../../components/NewTripChecklistItem'
+import { Form, Select, NestedField, Text } from 'react-form'
+import { Button, Row, Col, ButtonToolbar } from 'react-bootstrap'
+import FontAwesome from 'react-fontawesome'
+import './AddTrip.css'
+import Spinner from './../../components/Spinner'
+import { PulseLoader } from 'react-spinners'
 
-const PREFERRED_BOARD_NAME = 'Aviation'
-const CHECKLISTS_LIST_NAME = 'CHECKLISTS'
-const UPCOMING_FLIGHTS_LIST_NAME = 'Upcoming flights'
-const NEW_FLIGHT_CARD_NAME = 'New flight'
+const PREFERRED_BOARD_NAME = 'Podróże'
+const CHECKLISTS_LIST_NAME = 'TEMPLATE CARDS'
+const BACKLOG_LIST_NAME = 'Backlog'
+const NEW_TRIP_CARD_NAME = 'New trip'
+const TRIPS_LIST_NAME = 'TRIPS'
+
+//TODO Handling expired token
+//TODO Handling 400 responses
 
 class AddTrip extends Component {
   constructor(params) {
@@ -15,20 +23,30 @@ class AddTrip extends Component {
     this.state = {
       isLoadingBoards: true,
       isLoadingCards: false,
+      isSaving: false,
       boards: [],
-      newFlightCard: null
+      checklistCards: [],
+      boardMembers: [],
+      labelsColors: []
     }
   }
 
   componentDidMount() {
     Trello.client().getBoards('me')
-      .then(boards => this.setState({ boards, isLoadingBoards: false }, () => {
+      .then(boards => this.setState({
+        boards,
+        isLoadingBoards: false,
+        labelsColors: this.parseLabelsColors(boards)
+      }, () => {
         const defaultBoardId = this.getDefaultBoardId()
         if (defaultBoardId) {
           this.onBoardChange(defaultBoardId)
         }
       }))
+      .catch(error => console.log(error))
   }
+
+  parseLabelsColors = boards => boards ? Object.keys(boards[0].labelNames) : []
 
   getActiveBoards = () => this.state.boards.filter(board => !board.closed)
 
@@ -36,57 +54,66 @@ class AddTrip extends Component {
 
   fetchCards = listId => Trello.client().getCardsOnList(listId)
 
-  saveFlightSegments = form => {
-    const { newFlightCard } = this.state
-    const { flightSegments } = form
+  getBoardMembers = boardId => Trello.client().getBoardMembers(boardId)
 
-    this.fetchLists(newFlightCard.idBoard).then(response => {
-      const upcomingFlightsList = response.find(list => list.name === UPCOMING_FLIGHTS_LIST_NAME)
-      if (upcomingFlightsList) {
-        flightSegments.forEach(flightSegment => {
-          this.createNewFlightSegmentCard(flightSegment, newFlightCard, upcomingFlightsList.id)
-        })
-      } else {
-        throw new Error(`There's no list named "${UPCOMING_FLIGHTS_LIST_NAME}"`)
-      }
-    }).catch(error => {
-      alert(error)
-    })
-  }
+  saveTrip = form => {
+    const { board, tripChecklistItems, labelColor, tripName } = form
+    this.setState({ isSaving: true })
+    let tripLabelId
 
-  createNewFlightSegmentCard = (flightSegment, newFlightCard, upcomingFlightsListId) => {
-    const { date, airlineIcao, flightNumber, from, to, res } = flightSegment
-    const desc = newFlightCard.desc.replace('{reservation_number}', res)
-    const cardName = `${date} ${airlineIcao} ${flightNumber} ${from}->${to}`
-    const options = {
-      idCardSource: newFlightCard.id,
-      pos: 'bottom',
-      desc
-    }
+    Trello.client().addLabelOnBoard(board, tripName, labelColor)
+      .then(response => {
+        tripLabelId = response.id
 
-    Trello.client().addCardWithExtraParams(cardName, options, upcomingFlightsListId)
-      .then(card => this.addFlightStatusNotifications(card.id, from, to, flightNumber))
-  }
+        return this.fetchLists(board)
+      })
+      .then(response => {
+        const backlogList = response.find(list => list.name === BACKLOG_LIST_NAME)
+        const tripsList = response.find(list => list.name === TRIPS_LIST_NAME)
+        if (backlogList) {
+          const cardsPromises = []
 
-  addFlightStatusNotifications = (flightCardId, fromIata, toIata, flightNumber) => {
-    const airports = require('airport-data')
-    const airportFrom = airports.find(airport => airport.iata === fromIata)
-    const airportTo = airports.find(airport => airport.iata === toIata)
+          tripChecklistItems
+            .filter(item => item.enabled)
+            .forEach(item => {
+              const cardOptions = {
+                idCardSource: item.id,
+                pos: 'bottom',
+                idLabels: tripLabelId,
+                keepFromSource: 'attachments,checklists,comments,due,stickers'
+              }
 
-    const airportFromName = airportFrom ? airportFrom.city : ''
-    const airportToName = airportTo ? airportTo.city : ''
+              if (item.name === NEW_TRIP_CARD_NAME) {
+                cardsPromises.push(Trello.client().addCardWithExtraParams(tripName, {
+                  ...cardOptions,
+                  pos: 'top'
+                }, tripsList.id))
+                return
+              }
 
-    const arrivalNotification = FlightStatusNotifications
-      .buildArrivalNotification(airportToName, toIata)
-    Trello.client().addCommentToCard(flightCardId, arrivalNotification)
+              if (item.cardForEachMember) {
+                item.members.forEach(memberId => {
+                  cardsPromises.push(Trello.client().addCardWithExtraParams(item.name, {
+                    ...cardOptions,
+                    idMembers: memberId
+                  }, backlogList.id))
+                })
+              } else {
+                cardsPromises.push(Trello.client().addCardWithExtraParams(item.name, {
+                  ...cardOptions,
+                  idMembers: item.members.join(',')
+                }, backlogList.id))
+              }
+            })
 
-    const delayedFlightNotification = FlightStatusNotifications
-      .buildDelayedFlightNotification(airportToName, toIata)
-    Trello.client().addCommentToCard(flightCardId, delayedFlightNotification)
-
-    const flightPendingNotification = FlightStatusNotifications
-      .buildFlightPendingNotification(airportFromName, fromIata, airportToName, toIata, flightNumber)
-    Trello.client().addCommentToCard(flightCardId, flightPendingNotification)
+          return Promise.all(cardsPromises)
+        } else {
+          throw new Error(`There's no list named "${BACKLOG_LIST_NAME}"`)
+        }
+      }).then(() => alert('Done!'))
+      .catch(error => {
+        alert(error)
+      }).finally(() => this.setState({ isSaving: false }))
   }
 
   getDefaultBoardId = () => {
@@ -95,7 +122,11 @@ class AddTrip extends Component {
   }
 
   onBoardChange = boardId => {
-    this.setState({ isLoadingCards: true })
+    this.setState({
+      isLoadingCards: true,
+      checklistCards: [],
+      boardMembers: []
+    })
     this.fetchLists(boardId).then(response => {
       const checklistsList = response.find(list => list.name === CHECKLISTS_LIST_NAME)
       if (checklistsList) {
@@ -104,46 +135,79 @@ class AddTrip extends Component {
         this.setState({ newFlightCard: null })
         throw new Error(`There's no list named "${CHECKLISTS_LIST_NAME}"`)
       }
-    }).then(response => {
-      const newFlightCard = response.find(card => card.name === NEW_FLIGHT_CARD_NAME)
-      if (newFlightCard) {
-        this.setState({ newFlightCard })
-      } else {
-        this.setState({ newFlightCard: null })
-        throw new Error(`There's no card named "${NEW_FLIGHT_CARD_NAME}"`)
-      }
+    }).then(trelloCards => {
+      const checklistCards = trelloCards.map(card => ({
+        name: card.name,
+        id: card.id
+      }))
+      this.setState({ checklistCards })
+      return this.getBoardMembers(boardId)
+    }).then(boardMembers => {
+      this.setState({ boardMembers })
     }).catch(error => {
       alert(error)
     }).finally(() => this.setState({ isLoadingCards: false }))
   }
 
-  addFlightRow = formApi => formApi.setValue('flightSegments', formApi.values.flightSegments.concat({}))
+  shouldShowTable = () => {
+    const { isLoadingBoards, isLoadingCards, checklistCards } = this.state
+    return !isLoadingBoards && !isLoadingCards && checklistCards && checklistCards.length > 0
+  }
 
   render() {
-    const { isLoadingBoards, isLoadingCards, newFlightCard } = this.state
-
+    const { checklistCards, isSaving, boardMembers, labelsColors } = this.state
     return (
-      <div>
-        <h1>Adding flight</h1>
-        {isLoadingBoards ? <span>Loading...</span> : <Form defaultValues={{ board: this.getDefaultBoardId(), flightSegments: [{}] }}
-          onSubmit={this.saveFlightSegments} >
+      <div >
+        {!this.shouldShowTable() ? <Spinner /> : <Form
+          defaultValues={{ board: this.getDefaultBoardId(), tripChecklistItems: checklistCards }}
+          onSubmit={this.saveTrip} >
           {formApi => (
-            <form id="boardsForm" >
-              <label htmlFor="board">Board:</label>
-              <Select field="board"
-                id="select-input-board"
-                onChange={this.onBoardChange}
-                options={this.getActiveBoards().map(board => ({ label: board.name, value: board.id }))} />
+            <form id="boardsForm">
+              <Row>
+                <Col xs={3}>
+                  <Select field="board"
+                    className="form-control"
+                    id="select-input-board"
+                    onChange={this.onBoardChange}
+                    options={this.getActiveBoards().map(board => ({ label: board.name, value: board.id }))} />
+                </Col>
+                <Col xs={3}>
+                  <Text className="form-control"
+                    field="tripName"
+                    placeholder="Trip name"
+                  />
+                </Col>
+                <Col xs={1}>
+                  <Select field="labelColor"
+                    className="form-control"
+                    id="select-input-label-color"
+                    options={labelsColors.map(color => ({ label: color, value: color }))} />
+                </Col>
+                <Col xs={5}>
+                  <ButtonToolbar>
+                    <Button bsStyle="danger"
+                      onClick={() => formApi.setValue('flightSegments', [])}><FontAwesome name="trash" /> Clear</Button>
+                    <Button bsStyle="primary" onClick={formApi.submitForm} disabled={isSaving}>Create trip</Button>
+                    {isSaving && <PulseLoader color="#337ab7" className="AddTrip-savingSpinner" />}
+                  </ButtonToolbar>
+                </Col>
+              </Row>
 
-              {isLoadingCards ? <div>Loading cards...</div> : (
-                newFlightCard && <Fragment>
-                  {formApi.values.flightSegments.map((_element, i) =>
-                    <NestedField key={`flightSegments${i}`} field={['flightSegments', i]} component={NewFlightSegmentForm} />)}
-                  <button onClick={() => this.addFlightRow(formApi)} >Add flight segment</button>
-                  <button onClick={formApi.submitForm} >Save</button>
-                </Fragment>
-              )
-              }
+              <div className="addFlightRows">
+                <Row>
+                  <Col xs={1}></Col>
+                  <Col xs={5}>Card name</Col>
+                  <Col xs={6}>Members</Col>
+                </Row>
+              </div>
+
+              {checklistCards.map((item, i) =>
+                <NestedField key={`tripChecklistItems${i}`}
+                  field={['tripChecklistItems', i]}
+                  item={item}
+                  boardMembers={boardMembers}
+                  formApi={formApi}
+                  component={NewTripChecklistItem} />)}
             </form>
           )}
         </Form>}

@@ -1,0 +1,12 @@
+.NewTripChecklistItem-Row {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #C0C0C0;
+  display: flex;
+  display: -webkit-flex;
+  align-items: center;
+}
+
+.NewTripChecklistItem-Row.active {
+  background-color: lightgreen;
+}
