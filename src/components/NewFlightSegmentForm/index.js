@@ -41,7 +41,7 @@ export default class NewFlightSegmentForm extends Component {
           numberOfMonths={1}
           displayFormat="DD/MM/YYYY"
           saveFormat="YYMMDD"
-          placeholder="DD/MM/YYY"
+          placeholder="DD/MM/YYYY"
           hideKeyboardShortcutsPanel={true}
         /></Col>
         <Col xs={1}><Text className="form-control" field="from" placeholder="ABC" maxLength={3} style={{textTransform: 'uppercase'}} /></Col>

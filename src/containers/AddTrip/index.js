@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
 import Trello from './../../api/trello'
 import NewTripChecklistItem from './../../components/NewTripChecklistItem'
+import IntegrationsNotifications from './../../components/IntegrationsNotifications'
 import { Form, Select, NestedField, Text } from 'react-form'
 import { Button, Row, Col, ButtonToolbar } from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
@@ -157,7 +158,8 @@ class AddTrip extends Component {
   render() {
     const { checklistCards, isSaving, boardMembers, labelsColors } = this.state
     return (
-      <div >
+      <div>
+        <IntegrationsNotifications />
         {!this.shouldShowTable() ? <Spinner /> : <Form
           defaultValues={{ board: this.getDefaultBoardId(), tripChecklistItems: checklistCards }}
           onSubmit={this.saveTrip} >

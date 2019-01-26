@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
-import Trello from './api/trello'
 import AddFlight from './containers/AddFlight'
 import AddTrip from './containers/AddTrip'
+import Integrations from './containers/Integrations'
 import { PageHeader, Nav, NavItem } from 'react-bootstrap'
 import { Switch, Route } from 'react-router'
 import { withRouter } from 'react-router-dom'
@@ -17,7 +17,6 @@ class App extends Component {
     }
   }
   componentDidMount() {
-    Trello.authorize()
     const { pathname: navEventKey } = this.props.location
     this.setState({ navEventKey })
   }
@@ -41,10 +40,14 @@ class App extends Component {
           <NavItem eventKey="/addflight">
             Add flight segments
           </NavItem>
+          <NavItem eventKey="/integrations">
+            Integrations
+          </NavItem>
         </Nav>
         <Switch>
           <Route path="/addflight" component={AddFlight} />
           <Route path="/createtrip" component={AddTrip} />
+          <Route path="/integrations" component={Integrations} />
         </Switch>
       </div>
     );

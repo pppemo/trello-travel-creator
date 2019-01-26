@@ -9,6 +9,7 @@
     "moment": "^2.23.0",
     "react": "^16.7.0",
     "react-bootstrap": "^0.32.4",
+    "react-google-calendar-api": "^1.0.9",
     "react-dates": "^18.3.1",
     "react-dom": "^16.7.0",
     "react-fontawesome": "^1.6.1",
