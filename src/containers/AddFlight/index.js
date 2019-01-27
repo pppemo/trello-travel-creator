@@ -136,11 +136,16 @@ class AddFlight extends Component {
   }
 
   addCalendarEvent = flightSegment => {
-    // #Flight easyJet U23817 CDG->KRK R/EW8LVHN
-    const { airlineName, flightNumber, fromIata, toIata, res, departureTimestamp, arrivalTimestamp, fromTimezone, toTimezone, attendeesEmails } = flightSegment
+    // #Flight U23817 CDG->KRK easyJet R/EW8LVHN
+    const { airlineName, flightNumber, fromIata, toIata, res,
+      departureTimestamp, arrivalTimestamp, fromTimezone, toTimezone, attendeesEmails,
+      fromName, toName } = flightSegment
     const summary = `#Flight ${flightNumber} ${fromIata}->${toIata} ${airlineName} R/${res}`
+    const description = `✈️ \nFlight from ${fromName} to ${toName}\n` +
+      `Flight Radar link: https://www.flightradar24.com/${flightNumber}\n` +
+      `Operated by: ${airlineName}`
     const resource = {
-      description: 'my Description ✈️',
+      description,
       summary,
       attendees: attendeesEmails && attendeesEmails.map(email => ({ email })),
       start: {
