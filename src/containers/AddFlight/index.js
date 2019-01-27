@@ -48,7 +48,7 @@ class AddFlight extends Component {
   fetchCards = listId => Trello.client().getCardsOnList(listId)
 
   buildFlightSegments = flightSegments => flightSegments.map(flightSegment => {
-    const { fromIata, toIata, flightNumber, res, fromTimezone, toTimezone, takeOffDate, departure, arrival } = flightSegment
+    const { fromIata, toIata, flightNumber, res, fromTimezone, toTimezone, takeOffDate, departure, arrival, attendees } = flightSegment
     const INPUT_TIMESTAMP_FORMAT = 'YYMMDD HH:mm ZZ'
     const fromTimeShift = Timezones[fromTimezone].substr(4,6)
     const toTimeShift = Timezones[toTimezone].substr(4,6)
@@ -62,7 +62,8 @@ class AddFlight extends Component {
       departureTimestamp: moment(`${takeOffDate} ${departure} ${fromTimeShift}`, INPUT_TIMESTAMP_FORMAT).format(),
       arrivalTimestamp: moment(`${takeOffDate} ${arrival} ${toTimeShift}`, INPUT_TIMESTAMP_FORMAT).format(),
       fromTimeShift,
-      toTimeShift
+      toTimeShift,
+      attendeesEmails: attendees && attendees.replace(/ /g, '').split(/[,;]/)
     }
   })
 
@@ -136,14 +137,12 @@ class AddFlight extends Component {
 
   addCalendarEvent = flightSegment => {
     // #Flight easyJet U23817 CDG->KRK R/EW8LVHN
-    const { airlineName, flightNumber, fromIata, toIata, res, departureTimestamp, arrivalTimestamp, fromTimezone, toTimezone } = flightSegment
-    const summary = `#Flight ${airlineName} ${flightNumber} ${fromIata}->${toIata} R/${res}`
+    const { airlineName, flightNumber, fromIata, toIata, res, departureTimestamp, arrivalTimestamp, fromTimezone, toTimezone, attendeesEmails } = flightSegment
+    const summary = `#Flight ${flightNumber} ${fromIata}->${toIata} ${airlineName} R/${res}`
     const resource = {
       description: 'my Description ✈️',
       summary,
-//      attendees: [{
-//        email: 'jaskuczera@gmail.com'
-//      }],
+      attendees: attendeesEmails && attendeesEmails.map(email => ({ email })),
       start: {
         dateTime: departureTimestamp,
         timeZone: fromTimezone
@@ -227,8 +226,9 @@ class AddFlight extends Component {
                   <Col xs={1}>Destination outside EU</Col>
                   <Col xs={1}>Departure</Col>
                   <Col xs={1}>Arrival</Col>
-                  <Col xs={1}>Flight no.<br/>Airline</Col>
+                  <Col xs={1}>Flight no.</Col>
                   <Col xs={1}>Reservation</Col>
+                  <Col xs={2}>Calendar invitations</Col>
                 </Row>
               </div>
 

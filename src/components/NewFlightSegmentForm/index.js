@@ -97,6 +97,9 @@ export default class NewFlightSegmentForm extends Component {
             />
           </Col>
           <Col xs={1}><Text className="form-control" field="res" placeholder="ABCDEF" style={{textTransform: 'uppercase'}} /></Col>
+          <Col xs={2}>
+            <Text className="form-control" field="attendees" placeholder="Passengers' e-mails" />
+          </Col>
           <Col xs={1}>{index > 0 && <Button bsStyle="danger" onClick={this.removeRow}><FontAwesome name="trash" /></Button>}</Col>
         </Row>
         <Row className="NewFlightSegmentForm-Row">
