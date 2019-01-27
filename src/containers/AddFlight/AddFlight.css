@@ -1,6 +1,7 @@
 .addFlightRows {
   margin-top: 25px;
   margin-bottom: 25px;
+  padding: 10px;
 }
 
 .form-control:focus{

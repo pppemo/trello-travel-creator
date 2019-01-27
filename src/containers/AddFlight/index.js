@@ -3,7 +3,6 @@ import Trello from './../../api/trello'
 import NewFlightSegmentForm from './../../components/NewFlightSegmentForm'
 import FlightStatusNotifications from './../../notifications/flightStatusNotifications'
 import IntegrationsNotifications from './../../components/IntegrationsNotifications'
-import ApiCalendar from 'react-google-calendar-api'
 import * as moment from 'moment'
 import { Form, Select, NestedField } from 'react-form'
 import { Button, Row, Col, ButtonToolbar } from 'react-bootstrap'
@@ -12,6 +11,7 @@ import './AddFlight.css'
 import BitlyGateway from './../../api/bitly'
 import Spinner from './../../components/Spinner'
 import { PulseLoader } from 'react-spinners'
+import Timezones from 'google-timezones-json'
 
 const PREFERRED_BOARD_NAME = 'Flights log'
 const CHECKLISTS_LIST_NAME = 'CHECKLISTS'
@@ -47,28 +47,28 @@ class AddFlight extends Component {
 
   fetchCards = listId => Trello.client().getCardsOnList(listId)
 
-  fillAirportNamesAndCapitalizeInputs = flightSegments => flightSegments.map(flightSegment => {
-    const airports = require('airport-data')
-    const airportFrom = airports.find(airport => airport.iata === flightSegment.from.toUpperCase())
-    const airportTo = airports.find(airport => airport.iata === flightSegment.to.toUpperCase())
-    const fromName = airportFrom ? airportFrom.city : ''
-    const toName = airportTo ? airportTo.city : ''
-    const { from, to, flightNumber, res } = flightSegment
+  buildFlightSegments = flightSegments => flightSegments.map(flightSegment => {
+    const { fromIata, toIata, flightNumber, res, fromTimezone, toTimezone, takeOffDate, departure, arrival } = flightSegment
+    const INPUT_TIMESTAMP_FORMAT = 'YYMMDD HH:mm ZZ'
+    const fromTimeShift = Timezones[fromTimezone].substr(4,6)
+    const toTimeShift = Timezones[toTimezone].substr(4,6)
 
     return {
       ...flightSegment,
-      fromName,
-      toName,
-      from: from && from.toUpperCase(),
-      to: to && to.toUpperCase(),
+      fromIata: fromIata && fromIata.toUpperCase(),
+      toIata: toIata && toIata.toUpperCase(),
       flightNumber: flightNumber && flightNumber.toUpperCase(),
-      res: res && res.toUpperCase()
+      res: res && res.toUpperCase(),
+      departureTimestamp: moment(`${takeOffDate} ${departure} ${fromTimeShift}`, INPUT_TIMESTAMP_FORMAT).format(),
+      arrivalTimestamp: moment(`${takeOffDate} ${arrival} ${toTimeShift}`, INPUT_TIMESTAMP_FORMAT).format(),
+      fromTimeShift,
+      toTimeShift
     }
   })
 
   saveFlightSegments = form => {
     const { newFlightCard } = this.state
-    const flightSegments = this.fillAirportNamesAndCapitalizeInputs(form.flightSegments)
+    const flightSegments = this.buildFlightSegments(form.flightSegments)
     this.setState({ isSaving: true })
 
     this.fetchLists(newFlightCard.idBoard).then(response => {
@@ -93,9 +93,9 @@ class AddFlight extends Component {
   }
 
   createNewFlightSegmentCard = (flightSegment, flightSegmentNumber, newFlightCard, upcomingFlightsListId, flightSegments) => {
-    const { takeOffDate, flightNumber, airlineName, from, to, res } = flightSegment
+    const { takeOffDate, flightNumber, airlineName, fromIata, toIata, res } = flightSegment
     const desc = newFlightCard.desc.replace('{reservation_number}', res)
-    const cardName = `${takeOffDate} ${flightNumber} ${from}->${to} ${airlineName}`
+    const cardName = `${takeOffDate} ${flightNumber} ${fromIata}->${toIata} ${airlineName}`
     const options = {
       idCardSource: newFlightCard.id,
       pos: 'bottom',
@@ -107,16 +107,15 @@ class AddFlight extends Component {
   }
 
   addFlightStatusNotifications = (flightCardId, flightSegment, flightSegmentNumber, flightSegments) => {
-    const isMultipleSegments = flightSegments.length > 1
     const isFirstSegment = flightSegmentNumber === 0
     const hasFollowingSegment = flightSegments.length - 1 !== flightSegmentNumber
-    const { flightNumber, airlineName, from, to, fromName, toName, departure, arrival, destinationOutsideEU } = flightSegment
+    const { flightNumber, airlineName, fromIata, toIata, fromName, toName, departureTimestamp, arrivalTimestamp, destinationOutsideEU } = flightSegment
 
     const arrivalNotification = FlightStatusNotifications
-      .buildArrivalNotification(toName, to, hasFollowingSegment, flightSegments[flightSegmentNumber + 1])
+      .buildArrivalNotification(toName, toIata, hasFollowingSegment, flightSegments[flightSegmentNumber + 1])
 
     const delayedFlightNotification = FlightStatusNotifications
-      .buildDelayedFlightNotification(toName, to)
+      .buildDelayedFlightNotification(fromName, toName)
 
     return Promise.all([
       Trello.client().addCommentToCard(flightCardId, arrivalNotification),
@@ -125,8 +124,8 @@ class AddFlight extends Component {
       return BitlyGateway.shortenUrl(`https://www.flightradar24.com/${flightNumber}`).then(response => {
         const { link } = response.data
         let flightPendingNotification = FlightStatusNotifications
-          .buildFlightPendingNotification(fromName, from, toName, to, flightNumber, airlineName, departure, arrival, link, destinationOutsideEU)
-        if (isMultipleSegments && isFirstSegment) {
+          .buildFlightPendingNotification(fromName, fromIata, toName, toIata, flightNumber, airlineName, departureTimestamp, arrivalTimestamp, link, destinationOutsideEU)
+        if (isFirstSegment) {
           const flightPlanNotification = FlightStatusNotifications.buildFlightPlanNotification(flightSegments)
           flightPendingNotification = `${flightPlanNotification} ${flightPendingNotification}`
         }
@@ -137,24 +136,21 @@ class AddFlight extends Component {
 
   addCalendarEvent = flightSegment => {
     // #Flight easyJet U23817 CDG->KRK R/EW8LVHN
-    const { airlineName, flightNumber, from, to, res, takeOffDate, departure, arrival } = flightSegment
-    const timestampFormat = 'YYMMDD HH:mm'
-    const summary = `#Flight ${airlineName} ${flightNumber} ${from}->${to} R/${res}`
-    const departureTimestamp = moment(`${takeOffDate} ${departure}`, timestampFormat).format()
-    const arrivalTimestamp = moment(`${takeOffDate} ${arrival}`, timestampFormat).format()
+    const { airlineName, flightNumber, fromIata, toIata, res, departureTimestamp, arrivalTimestamp, fromTimezone, toTimezone } = flightSegment
+    const summary = `#Flight ${airlineName} ${flightNumber} ${fromIata}->${toIata} R/${res}`
     const resource = {
-      sendNotifications: true,
+      description: 'my Description ✈️',
       summary,
-      attendees: [{
-        email: 'jaskuczera@gmail.com'
-      }],
+//      attendees: [{
+//        email: 'jaskuczera@gmail.com'
+//      }],
       start: {
         dateTime: departureTimestamp,
-        timeZone: 'Europe/Warsaw'
+        timeZone: fromTimezone
       },
       end: {
         dateTime: arrivalTimestamp,
-        timeZone: 'Europe/Warsaw'
+        timeZone: toTimezone
       }
     }
     return window.gapi.client.calendar.events.insert({
@@ -225,14 +221,13 @@ class AddFlight extends Component {
 
               <div className="addFlightRows">
                 <Row>
-                  <Col xs={2}>Departure date</Col>
+                  <Col xs={1}>Departure date</Col>
                   <Col xs={1}>From</Col>
                   <Col xs={1}>To</Col>
                   <Col xs={1}>Destination outside EU</Col>
                   <Col xs={1}>Departure</Col>
                   <Col xs={1}>Arrival</Col>
-                  <Col xs={1}>Flight no.</Col>
-                  <Col xs={1}>Airline</Col>
+                  <Col xs={1}>Flight no.<br/>Airline</Col>
                   <Col xs={1}>Reservation</Col>
                 </Row>
               </div>
