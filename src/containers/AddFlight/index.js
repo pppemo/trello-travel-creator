@@ -32,13 +32,15 @@ class AddFlight extends Component {
 
   componentDidMount() {
     Trello.client().getBoards('me')
-      .then(boards => this.setState({ boards, isLoadingBoards: false }, () => {
+      .then(Trello.responseHandler)
+      .then(boards => this.setState({ boards }, () => {
         const defaultBoardId = this.getDefaultBoardId()
         if (defaultBoardId) {
           this.onBoardChange(defaultBoardId)
         }
       }))
-      .catch(error => console.log(error))
+      .catch(() => alert('Trello might not be connected'))
+      .finally(() => this.setState({ isLoadingBoards: false }))
   }
 
   getActiveBoards = () => this.state.boards.filter(board => !board.closed)

@@ -34,6 +34,7 @@ class AddTrip extends Component {
 
   componentDidMount() {
     Trello.client().getBoards('me')
+      .then(Trello.responseHandler)
       .then(boards => this.setState({
         boards,
         isLoadingBoards: false,

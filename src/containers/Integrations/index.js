@@ -8,31 +8,52 @@ class Integrations extends Component {
     super(props)
     this.state = {
       isTrelloAuthorized: false,
+      isTrelloApiLoaded: false,
       isGoogleCalendarAuthorized: false,
       isGoogleCalendarApiLoaded: false
     }
   }
 
   authorizeTrello = () => Trello.authorize()
+    .then(() => this.setState({ isTrelloAuthorized: true }))
+
   authorizeGoogleCalendar = () => ApiCalendar.handleAuthClick()
 
   componentDidMount() {
-    this.setState({ isTrelloAuthorized: Trello.isAuthorized() })
+    Trello.isAuthorized()
+      .then(() => this.setState({ isTrelloAuthorized: true }))
+      .catch(() => console.error('Trello not authorized'))
+      .finally(() => this.setState({ isTrelloApiLoaded: true }))
+
     ApiCalendar.onLoad(() => this.setState({
-      isGoogleCalendarApiLoaded: true,
-      isGoogleCalendarAuthorized: window.gapi.auth2.getAuthInstance().isSignedIn.get()
-    })
+        isGoogleCalendarApiLoaded: true,
+        isGoogleCalendarAuthorized: window.gapi.auth2.getAuthInstance().isSignedIn.get()
+      })
     )
   }
 
   render() {
-    const { isTrelloAuthorized, isGoogleCalendarApiLoaded, isGoogleCalendarAuthorized } = this.state
+    const {
+      isTrelloAuthorized,
+      isTrelloApiLoaded,
+      isGoogleCalendarApiLoaded,
+      isGoogleCalendarAuthorized
+    } = this.state
 
     return (
       <div>
-        {!isTrelloAuthorized && <Button onClick={this.authorizeTrello}>Trello - connect</Button>}
-        {isGoogleCalendarApiLoaded && isGoogleCalendarAuthorized
-          && <Button onClick={this.authorizeGoogleCalendar}>Google Calendar - connect</Button>}
+        <div>
+          Trello:
+          {!isTrelloApiLoaded && 'Checking...'}
+          {isTrelloApiLoaded && !isTrelloAuthorized && <Button onClick={this.authorizeTrello}>Connect</Button>}
+          {isTrelloApiLoaded && isTrelloAuthorized && 'Connected'}
+        </div>
+        <div>
+          Google Calendar:
+          {!isGoogleCalendarApiLoaded && 'Checking...'}
+          {isGoogleCalendarApiLoaded && !isGoogleCalendarAuthorized && <Button onClick={this.authorizeGoogleCalendar}>Connect</Button>}
+          {isGoogleCalendarApiLoaded && isGoogleCalendarAuthorized && 'Connected'}
+        </div>
       </div>
     )
   }
