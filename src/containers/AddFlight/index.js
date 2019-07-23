@@ -55,14 +55,20 @@ class AddFlight extends Component {
     const fromTimeShift = Timezones[fromTimezone].substr(4,6)
     const toTimeShift = Timezones[toTimezone].substr(4,6)
 
+    const fromDateObject = moment(`${takeOffDate} ${departure} ${fromTimeShift}`, INPUT_TIMESTAMP_FORMAT)
+    const toDateObject = moment(`${takeOffDate} ${arrival} ${toTimeShift}`, INPUT_TIMESTAMP_FORMAT);
+
+    Array.from([fromDateObject, toDateObject])
+      .forEach(dateObject => dateObject.isDST() && dateObject.subtract(1, 'hour'))
+
     return {
       ...flightSegment,
       fromIata: fromIata && fromIata.toUpperCase(),
       toIata: toIata && toIata.toUpperCase(),
       flightNumber: flightNumber && flightNumber.toUpperCase(),
       res: res && res.toUpperCase(),
-      departureTimestamp: moment(`${takeOffDate} ${departure} ${fromTimeShift}`, INPUT_TIMESTAMP_FORMAT).format(),
-      arrivalTimestamp: moment(`${takeOffDate} ${arrival} ${toTimeShift}`, INPUT_TIMESTAMP_FORMAT).format(),
+      departureTimestamp: fromDateObject.format(),
+      arrivalTimestamp: toDateObject.format(),
       fromTimeShift,
       toTimeShift,
       attendeesEmails: attendees && attendees.replace(/ /g, '').split(/[,;]/)

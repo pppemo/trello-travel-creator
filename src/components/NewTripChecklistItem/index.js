@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { Row, Col, Button, ToggleButton, ToggleButtonGroup } from 'react-bootstrap'
+import { Row, Col, ToggleButton, ToggleButtonGroup } from 'react-bootstrap'
 import classNames from 'classnames'
 import FontAwesome from 'react-fontawesome'
 import './NewTripChecklistItem.css'
