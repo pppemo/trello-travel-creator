@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "airport-data": "^1.0.1",
-    "axios": "^0.18.0",
+    "axios": "^0.21.1",
     "classnames": "^2.2.6",
     "google-timezones-json": "^1.0.2",
     "moment": "^2.23.0",
