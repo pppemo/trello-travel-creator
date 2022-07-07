@@ -7,7 +7,7 @@
     "axios": "^0.18.0",
     "classnames": "^2.2.6",
     "google-timezones-json": "^1.0.2",
-    "moment": "^2.23.0",
+    "moment": "^2.29.4",
     "react": "^16.7.0",
     "react-bootstrap": "^0.32.4",
     "react-google-calendar-api": "^1.0.9",
